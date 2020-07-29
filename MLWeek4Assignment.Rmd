@@ -1,0 +1,131 @@
+---
+title: "Human Activity Recognition"
+author: "Deepanshu Rustagi"
+date: "7/19/2020"
+output: html_document
+---
+# Introduction
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, our goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har
+
+### Data Descriptions
+The training data for this project are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from this source: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har.
+
+# Loading Necessary Packages
+```{r message=FALSE, warning=FALSE}
+library(caret)
+library(ggplot2)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(gbm)
+```
+
+# Data Loading
+```{r message=FALSE, warning=FALSE}
+mlatrainurl<-'https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv'
+mlatesturl<-'https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv'
+
+download.file(mlatrainurl,'traindata.csv',method = 'curl')
+download.file(mlatesturl,'testdata.csv',method = 'curl')
+
+traindata<-read.csv('traindata.csv')
+testdata<-read.csv('testdata.csv')
+```
+Checking the dimensions of the loaded data.
+```{r}
+dim(traindata)
+dim(testdata)
+```
+# Data Cleansing
+Out of 160 columns in the training data, those with near zero variance are removed.
+```{r}
+traindata<-traindata[,-nearZeroVar(traindata)]
+```
+Columns with more than 95% NA or missing values are removed.
+```{r}
+traindata<-traindata[,-(which(colMeans(is.na(traindata))>0.95))]
+```
+First 7 columns which are non-numeric and hance, won't contribute to prediction, are removed.
+```{r}
+traindata<-traindata[,8:59]
+```
+Similar cleanising is done on testing data. Removing near zero variance and non-numeric first 7 columns.
+```{r}
+testdata<-testdata[,-nearZeroVar(testdata)]
+testdata<-testdata[,8:59]
+```
+Comparing names of remaining training and testing data shows that last column is different. It is classe for training data and problem_id for testing data.
+```{r}
+names(traindata)==names(testdata)
+```
+Partitioning of training data in 60:40 ratio for training and cross-validation.
+```{r}
+trainindex<-createDataPartition(y=traindata$classe,p=0.6,list = FALSE)
+traindatatrain<-traindata[trainindex,]
+traindatatest<-traindata[-trainindex,]
+```
+# Predictions
+
+### 1. Decision Tree
+```{r}
+set.seed(33222)
+modfitrp<-train(classe~.,method='rpart',data = traindatatrain)
+predictrp<-predict(modfitrp,traindatatest)
+rpconfmat<-confusionMatrix(predictrp,traindatatest$classe)
+rpconfmat
+```
+We see that the accuracy using this model is only `r round(rpconfmat$overall['Accuracy'],4)*100`.
+**The out of sample error rate is `r 100 - (round(rpconfmat$overall['Accuracy'],4)*100)`**
+Plot for the Decision Tree prediction model.
+```{r}
+rpart.plot(modfitrp$finalModel)
+```
+
+### 2. Random Forest
+```{r}
+set.seed(33223)
+modfitrf<-train(classe~.,method='rf',data=traindatatrain,ntree=100)
+predictrf<-predict(modfitrf,traindatatest)
+rfconfmat<-confusionMatrix(predictrf,traindatatest$classe)
+rfconfmat
+```
+We see that the accuracy using this model is `r round(rfconfmat$overall['Accuracy'],4)*100`.
+**The out of sample error rate is `r 100 - (round(rfconfmat$overall['Accuracy'],4)*100)`**
+Plot for the Random Forest prediction model.
+```{r}
+plot(rfconfmat$table, col = rfconfmat$byClass, 
+     main = paste("Random Forest - Accuracy Level =",
+                  round(rfconfmat$overall['Accuracy'], 4)))
+```
+
+### 3. Gradient Boosting Machine
+```{r}
+set.seed(33224)
+modfitgbm<-train(classe~.,method='gbm',data=traindatatrain,verbose=FALSE)
+predictgbm<-predict(modfitgbm,traindatatest)
+gbmconfmat<-confusionMatrix(predictgbm,traindatatest$classe)
+gbmconfmat
+```
+We see that the accuracy using this model is `r round(gbmconfmat$overall['Accuracy'],4)*100`.
+**The out of sample error rate is `r 100 - (round(gbmconfmat$overall['Accuracy'],4)*100)`**
+Plot for the Gradient Boosting Machine prediction model.
+```{r}
+plot(gbmconfmat$table, col = gbmconfmat$byClass, 
+     main = paste("Gradient Boosting - Accuracy Level =",
+                  round(gbmconfmat$overall['Accuracy'], 4)))
+```
+
+# Conclusion and Test Data Prediction
+We can see that the accuracy on the cross-validation data is better with Random forest model.
+We will use it for prediction on the testing data.
+```{r}
+predict(modfitrf,testdata)
+```
