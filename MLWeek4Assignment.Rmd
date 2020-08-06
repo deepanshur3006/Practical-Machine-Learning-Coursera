@@ -1,7 +1,7 @@
 ---
 title: "Human Activity Recognition"
 author: "Deepanshu Rustagi"
-date: "7/19/2020"
+date: "8/6/2020"
 output: html_document
 ---
 # Introduction
@@ -84,6 +84,7 @@ rpconfmat
 ```
 We see that the accuracy using this model is only `r round(rpconfmat$overall['Accuracy'],4)*100`.
 **The out of sample error rate is `r 100 - (round(rpconfmat$overall['Accuracy'],4)*100)`**
+
 Plot for the Decision Tree prediction model.
 ```{r}
 rpart.plot(modfitrp$finalModel)
@@ -99,6 +100,7 @@ rfconfmat
 ```
 We see that the accuracy using this model is `r round(rfconfmat$overall['Accuracy'],4)*100`.
 **The out of sample error rate is `r 100 - (round(rfconfmat$overall['Accuracy'],4)*100)`**
+
 Plot for the Random Forest prediction model.
 ```{r}
 plot(rfconfmat$table, col = rfconfmat$byClass, 
@@ -116,6 +118,7 @@ gbmconfmat
 ```
 We see that the accuracy using this model is `r round(gbmconfmat$overall['Accuracy'],4)*100`.
 **The out of sample error rate is `r 100 - (round(gbmconfmat$overall['Accuracy'],4)*100)`**
+
 Plot for the Gradient Boosting Machine prediction model.
 ```{r}
 plot(gbmconfmat$table, col = gbmconfmat$byClass, 
